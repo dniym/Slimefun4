@@ -41,12 +41,11 @@ import io.github.thebusybiscuit.slimefun4.core.services.PerWorldSettingsService;
 import io.github.thebusybiscuit.slimefun4.core.services.PermissionsService;
 import io.github.thebusybiscuit.slimefun4.core.services.UpdaterService;
 import io.github.thebusybiscuit.slimefun4.core.services.github.GitHubService;
-import io.github.thebusybiscuit.slimefun4.core.services.metrics.MetricsService;
+import io.github.thebusybiscuit.slimefun4.core.services.MetricsService;
 import io.github.thebusybiscuit.slimefun4.core.services.plugins.ThirdPartyPluginService;
 import io.github.thebusybiscuit.slimefun4.core.services.profiler.SlimefunProfiler;
 import io.github.thebusybiscuit.slimefun4.implementation.items.altar.AncientAltar;
 import io.github.thebusybiscuit.slimefun4.implementation.items.backpacks.Cooler;
-import io.github.thebusybiscuit.slimefun4.implementation.items.electric.BasicCircuitBoard;
 import io.github.thebusybiscuit.slimefun4.implementation.items.electric.reactors.Reactor;
 import io.github.thebusybiscuit.slimefun4.implementation.items.tools.GrapplingHook;
 import io.github.thebusybiscuit.slimefun4.implementation.items.weapons.SeismicAxe;
@@ -90,6 +89,7 @@ import io.github.thebusybiscuit.slimefun4.implementation.setup.SlimefunItemSetup
 import io.github.thebusybiscuit.slimefun4.implementation.tasks.ArmorTask;
 import io.github.thebusybiscuit.slimefun4.implementation.tasks.SlimefunStartupTask;
 import io.github.thebusybiscuit.slimefun4.implementation.tasks.TickerTask;
+import io.papermc.lib.PaperLib;
 import me.mrCookieSlime.CSCoreLibPlugin.CSCoreLib;
 import me.mrCookieSlime.Slimefun.Objects.SlimefunItem.abstractItems.AContainer;
 import me.mrCookieSlime.Slimefun.Objects.SlimefunItem.abstractItems.AGenerator;
@@ -106,7 +106,7 @@ import me.mrCookieSlime.Slimefun.api.inventory.UniversalBlockMenu;
  */
 public final class SlimefunPlugin extends JavaPlugin implements SlimefunAddon {
 
-    public static SlimefunPlugin instance;
+    private static SlimefunPlugin instance;
 
     private MinecraftVersion minecraftVersion = MinecraftVersion.UNKNOWN;
 
@@ -165,6 +165,8 @@ public final class SlimefunPlugin extends JavaPlugin implements SlimefunAddon {
         }
         else if (getServer().getPluginManager().isPluginEnabled("CS-CoreLib")) {
             long timestamp = System.nanoTime();
+            
+            PaperLib.suggestPaper(this);
 
             // We wanna ensure that the Server uses a compatible version of Minecraft
             if (isVersionUnsupported()) {
@@ -194,7 +196,7 @@ public final class SlimefunPlugin extends JavaPlugin implements SlimefunAddon {
             networkManager = new NetworkManager(networkSize);
 
             // Setting up bStats
-            metricsService.start();
+            new Thread(metricsService::start).start();
 
             // Starting the Auto-Updater
             if (config.getBoolean("options.auto-update")) {
@@ -330,7 +332,7 @@ public final class SlimefunPlugin extends JavaPlugin implements SlimefunAddon {
     @Override
     public void onDisable() {
         // Slimefun never loaded successfully, so we don't even bother doing stuff here
-        if (instance == null || minecraftVersion == MinecraftVersion.UNIT_TEST) {
+        if (instance() == null || minecraftVersion == MinecraftVersion.UNIT_TEST) {
             return;
         }
 
@@ -364,6 +366,8 @@ public final class SlimefunPlugin extends JavaPlugin implements SlimefunAddon {
 
         // Create a new backup zip
         backupService.run();
+
+        metricsService.cleanUp();
 
         // Prevent Memory Leaks
         // These static Maps should be removed at some point...
@@ -426,8 +430,7 @@ public final class SlimefunPlugin extends JavaPlugin implements SlimefunAddon {
         new WitherListener(this);
         new IronGolemListener(this);
         new PlayerInteractEntityListener(this);
-
-        new MobDropListener(this, (BasicCircuitBoard) SlimefunItems.BASIC_CIRCUIT_BOARD.getItem());
+        new MobDropListener(this);
 
         // Item-specific Listeners
         new VampireBladeListener(this, (VampireBlade) SlimefunItems.BLADE_OF_VAMPIRES.getItem());
@@ -477,6 +480,10 @@ public final class SlimefunPlugin extends JavaPlugin implements SlimefunAddon {
         catch (Exception | LinkageError x) {
             getLogger().log(Level.SEVERE, x, () -> "An Error occurred while initializing Slimefun Researches for Slimefun " + getVersion());
         }
+    }
+
+    public static SlimefunPlugin instance() {
+        return instance;
     }
 
     public static Config getCfg() {
@@ -557,6 +564,16 @@ public final class SlimefunPlugin extends JavaPlugin implements SlimefunAddon {
      */
     public static UpdaterService getUpdater() {
         return instance.updaterService;
+    }
+
+    /**
+     * This method returns the {@link MetricsService} of Slimefun.
+     * It is used to handle sending metric information to bStats.
+     *
+     * @return The {@link MetricsService} for Slimefun
+     */
+    public static MetricsService getMetricsService() {
+        return instance.metricsService;
     }
 
     /**

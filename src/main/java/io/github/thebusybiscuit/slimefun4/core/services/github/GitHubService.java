@@ -9,13 +9,13 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
 import io.github.thebusybiscuit.cscorelib2.config.Config;
 import io.github.thebusybiscuit.slimefun4.core.services.localization.Translators;
 import io.github.thebusybiscuit.slimefun4.implementation.SlimefunPlugin;
+import io.github.thebusybiscuit.slimefun4.utils.HeadTexture;
 import io.github.thebusybiscuit.slimefun4.utils.NumberUtils;
+import kong.unirest.JsonNode;
+import kong.unirest.json.JSONObject;
 
 /**
  * This Service is responsible for grabbing every {@link Contributor} to this project
@@ -30,7 +30,9 @@ public class GitHubService {
     private final String repository;
     private final Set<GitHubConnector> connectors;
     private final ConcurrentMap<String, Contributor> contributors;
+
     private final Config uuidCache = new Config("plugins/Slimefun/cache/github/uuids.yml");
+    private final Config texturesCache = new Config("plugins/Slimefun/cache/github/skins.yml");
 
     private boolean logging = false;
 
@@ -105,11 +107,11 @@ public class GitHubService {
         connectors.add(new GitHubConnector(this, repository) {
 
             @Override
-            public void onSuccess(JsonElement element) {
-                JsonObject object = element.getAsJsonObject();
-                forks = object.get("forks").getAsInt();
-                stars = object.get("stargazers_count").getAsInt();
-                lastUpdate = NumberUtils.parseGitHubDate(object.get("pushed_at").getAsString());
+            public void onSuccess(JsonNode element) {
+                JSONObject object = element.getObject();
+                forks = object.getInt("forks");
+                stars = object.getInt("stargazers_count");
+                lastUpdate = NumberUtils.parseGitHubDate(object.getString("pushed_at"));
             }
 
             @Override
@@ -196,18 +198,29 @@ public class GitHubService {
     }
 
     /**
-     * This will store the {@link UUID} of all {@link Contributor Contributors} in memory
-     * in a {@link File} to save requests the next time we iterate over them.
+     * This will store the {@link UUID} and texture of all {@link Contributor Contributors}
+     * in memory in a {@link File} to save requests the next time we iterate over them.
      */
-    protected void saveUUIDCache() {
+    protected void saveCache() {
         for (Contributor contributor : contributors.values()) {
             Optional<UUID> uuid = contributor.getUniqueId();
 
-            if (uuid.isPresent()) {
-                uuidCache.setValue(contributor.getName(), uuid.get());
+            uuid.ifPresent(value -> uuidCache.setValue(contributor.getName(), value));
+
+            if (contributor.hasTexture()) {
+                String texture = contributor.getTexture();
+
+                if (!texture.equals(HeadTexture.UNKNOWN.getTexture())) {
+                    texturesCache.setValue(contributor.getName(), texture);
+                }
             }
         }
 
         uuidCache.save();
+        texturesCache.save();
+    }
+
+    protected String getCachedTexture(String name) {
+        return texturesCache.getString(name);
     }
 }

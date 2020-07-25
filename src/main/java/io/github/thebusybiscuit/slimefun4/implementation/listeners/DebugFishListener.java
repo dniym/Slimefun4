@@ -15,6 +15,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import io.github.thebusybiscuit.cscorelib2.chat.ChatColors;
 import io.github.thebusybiscuit.cscorelib2.skull.SkullBlock;
 import io.github.thebusybiscuit.slimefun4.core.attributes.EnergyNetComponent;
+import io.github.thebusybiscuit.slimefun4.core.attributes.EnergyNetProvider;
 import io.github.thebusybiscuit.slimefun4.core.networks.energy.EnergyNet;
 import io.github.thebusybiscuit.slimefun4.implementation.SlimefunItems;
 import io.github.thebusybiscuit.slimefun4.implementation.SlimefunPlugin;
@@ -98,20 +99,20 @@ public class DebugFishListener implements Listener {
         }
 
         if (item.isTicking()) {
-            p.sendMessage(ChatColors.color("&dTicker: " + greenCheckmark));
+            p.sendMessage(ChatColors.color("&dTicking: " + greenCheckmark));
             p.sendMessage(ChatColors.color("  &dAsync: &e" + (item.getBlockTicker().isSynchronized() ? redCross : greenCheckmark)));
+        }
+        else if (item instanceof EnergyNetProvider) {
+            p.sendMessage(ChatColors.color("&dTicking: &3Indirect (Generator)"));
+        }
+        else {
+            p.sendMessage(ChatColors.color("&dTicking: " + redCross));
+        }
+        
+        if (SlimefunPlugin.getProfiler().hasTimings(b)) {
             p.sendMessage(ChatColors.color("  &dTimings: &e" + SlimefunPlugin.getProfiler().getTime(b)));
             p.sendMessage(ChatColors.color("  &dTotal Timings: &e" + SlimefunPlugin.getProfiler().getTime(item)));
             p.sendMessage(ChatColors.color("  &dChunk Timings: &e" + SlimefunPlugin.getProfiler().getTime(b.getChunk())));
-        }
-        else if (item.getEnergyTicker() != null) {
-            p.sendMessage(ChatColors.color("&dTicking: " + "&3Indirect"));
-            p.sendMessage(ChatColors.color("  &dTimings: &e" + SlimefunPlugin.getProfiler().getTime(b)));
-            p.sendMessage(ChatColors.color("  &dChunk Timings: &e" + SlimefunPlugin.getProfiler().getTime(b.getChunk())));
-        }
-        else {
-            p.sendMessage(ChatColors.color("&dTicker: " + redCross));
-            p.sendMessage(ChatColors.color("&dTicking: " + redCross));
         }
 
         if (ChargableBlock.isChargable(b)) {
