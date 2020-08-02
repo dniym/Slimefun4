@@ -30,7 +30,7 @@ public interface PiglinBarterDrop extends ItemAttribute {
     
     /** It is recommended that this chance is kept reasonably low to feel like
      * a vanilla drop as a 100% chance will completely override all Piglin 
-     * barter drops.  (NOTE: this feature only exists in 1.16+)
+     * barter drops. (NOTE: this feature only exists in 1.16+)
      * 
      * @return The integer chance (0-100%) this SlimefunItem has to drop.
      */
